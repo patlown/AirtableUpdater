@@ -21,13 +21,47 @@ def getTotalStorage():
 def roundup(x):
 	return int(math.ceil(x / 100.0)) * 100
 
-def createFields(computer):
+def createFields(computer,cfgDict):
     fields = {'Name':'LSS-' + computer.serialNum, 'SN': computer.serialNum, 'Model':computer.model
 	,'Make':computer.make, 'HD (GB)': computer.storage,
 	'RAM (GB)':computer.ram, 'CPU': computer.cpu, 'Last Imaged':computer.date, 'OS': computer.os, 
 	}
 
     return fields
+
+def cfgToDict():
+    f = open("clientsettings.cfg","r")
+
+    s = f.read().strip()
+    contents = dict(item.split("=") for item in s.split("\n"))
+
+
+    if 'UW_Owner_or_Fiscal_Group' in contents:
+        airtable = Airtable('app9og4P1Z4iet5fT','Departments','keybFjYyk9LuWpxNw')
+        res = airtable.search('Name',contents['UW_Owner_or_Fiscal_Group'],fields = ['Name'])
+        print(res)
+        if len(res) == 0:
+            del contents['UW_Owner_or_Fiscal_Group']
+        else:
+            contents['Department'] = [res['id']]
+    if 'UW_Location' in contents:
+        contents['Location'] = contents['UW_Location']
+        del contents['UW_Location']
+    if 'UW_NetID' in contents:
+        contents['NetID'] = contents['UW_NetID']
+        del contents['UW_NetID']
+    if 'UW_PURCHASE_DATE' in contents:
+        contents['Purchased'] = contents['UW_PURCHASE_DATE']
+        del contents['UW_PURCHASE_DATE']
+    
+
+
+
+    return contents
+
+    
+        
+
     
 
 class Computer:
@@ -56,10 +90,13 @@ def main():
     computers = []
     
     records = airtable.search('SN',serial)
+    print(records)
+    cfgDict = cfgToDict()
+    # print(cfgDict)
 
     if len(records) == 0:
         c = Computer(serial)
-        airtable.insert(createFields(c))
+        airtable.insert(createFields(c,cfgDict))
 
 
     for record in records:
@@ -67,7 +104,7 @@ def main():
         computers.append(curr)
 
     for c in computers:
-        airtable.update(c.comp.get('id'),createFields(c))
+        airtable.update(c.comp.get('id'),createFields(c,cfgDict))
 
 if __name__ == '__main__':
     main()
